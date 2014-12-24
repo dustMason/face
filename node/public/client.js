@@ -1,4 +1,9 @@
-function createAudioMeter(audioContext,clipLevel,averaging,clipLag) {
+var audioContext = null;
+var meter = null;
+var rafID = null;
+var socket = io('http://localhost');
+
+function createAudioMeter(audioContext, clipLevel, averaging, clipLag) {
   var processor = audioContext.createScriptProcessor(512);
   processor.onaudioprocess = volumeAudioProcess;
   processor.clipping = false;
@@ -48,35 +53,21 @@ function volumeAudioProcess( event ) {
   this.volume = Math.max(rms, this.volume*this.averaging);
 }
 
-var audioContext = null;
-var meter = null;
-var canvasContext = null;
-var WIDTH=500;
-var HEIGHT=50;
-var rafID = null;
 
 window.onload = function() {
 
-  // grab our canvas
-  // canvasContext = document.getElementById( "meter" ).getContext("2d");
-
-  // monkeypatch Web Audio
   window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
-  // grab an audio context
   audioContext = new AudioContext();
 
-  // Attempt to get audio input
   try {
-    // monkeypatch getUserMedia
     navigator.getUserMedia = 
       navigator.getUserMedia ||
       navigator.webkitGetUserMedia ||
       navigator.mozGetUserMedia;
 
     // ask for an audio input
-    navigator.getUserMedia(
-      {
+    navigator.getUserMedia({
       "audio": {
         "mandatory": {
           "googEchoCancellation": "false",
@@ -90,7 +81,6 @@ window.onload = function() {
   } catch (e) {
     alert('getUserMedia threw exception :' + e);
   }
-
 };
 
 
@@ -98,35 +88,14 @@ function didntGetStream() {
   alert('Stream generation failed.');
 }
 
-var socket = io('http://localhost');
-
 function gotStream(stream) {
-  // Create an AudioNode from the stream.
   var mediaStreamSource = audioContext.createMediaStreamSource(stream);
-
-  // Create a new volume meter and connect it.
   meter = createAudioMeter(audioContext);
   mediaStreamSource.connect(meter);
-
-  // kick off the visual updating
   sendAudioLevel();
 }
 
 function sendAudioLevel(time) {
-  // clear the background
-  // canvasContext.clearRect(0,0,WIDTH,HEIGHT);
-
-  // check if we're currently clipping
-  // if (meter.checkClipping())
-  //   canvasContext.fillStyle = "red";
-  // else
-  //   canvasContext.fillStyle = "green";
-
-  // draw a bar based on the current volume
-  // canvasContext.fillRect(0, 0, meter.volume*WIDTH*1.4, HEIGHT);
-  
   socket.emit('audio', { data: meter.volume });
-
-  // set up the next visual callback
   rafID = window.requestAnimationFrame(sendAudioLevel);
 }

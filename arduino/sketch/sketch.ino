@@ -6,9 +6,9 @@
 Servo jaw;
 
 void setup() {
-  jaw.attach(5);
+  jaw.attach(5, 771, 1798);
   jaw.write(90);
-  Serial.begin(9600);
+  Serial.begin(19200);
 }
 
 static int v = 0;

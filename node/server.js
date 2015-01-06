@@ -2,7 +2,7 @@ var app = require('http').createServer(handler),
     io = require('socket.io')(app),
     fs = require('fs'),
     SerialPort = require('serialport').SerialPort,
-    serialPort = new SerialPort("/dev/tty.usbmodem1411", { baudrate: 9600 });
+    serialPort = new SerialPort("/dev/tty.usbmodem1411", { baudrate: 19200 });
 
 // this is the worst http server ever. it will serve any file asked for,
 // including the source of files outside its own root dir.
@@ -24,7 +24,12 @@ function handler (req, res) {
   });
 }
 
+function mapValue(x, in_min, in_max, out_min, out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 var listening = true;
+var jawAngle = 0;
 
 serialPort.on("open", function () {
   console.log('open');
@@ -32,16 +37,16 @@ serialPort.on("open", function () {
   io.on('connection', function (socket) {
     socket.on('audio', function(data) {
       if (listening) {
-        var command = parseInt(data.data * 250, 10) + "s";
-        console.log(command);
-        serialPort.write(command, function(err, results) {
-          if (err) { console.log('err ' + err); }
-          // console.log('results ' + results);
-        });
-        listening = false;
-        setTimeout(function(){
-          listening = true;
-        }, 100);
+        var value = Math.floor(mapValue(data.data, 0, 1, 40, 20));
+        if (jawAngle !== value) {
+          jawAngle = value;
+          console.log(data.data, value);
+          serialPort.write(value + "s", function(err) {
+            if (err) { console.log('err ' + err); }
+          });
+          listening = false;
+          setTimeout(function(){ listening = true; }, 20);
+        }
       }
     });
   });
